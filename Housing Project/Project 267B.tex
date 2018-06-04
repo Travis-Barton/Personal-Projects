@@ -1,0 +1,155 @@
+\documentclass[11pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
+\usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   		% ... or a4paper or a5paper or ... 
+%\geometry{landscape}                		% Activate for rotated page geometry
+%\usepackage[parfill]{parskip}    		% Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}	
+\usepackage{caption}
+\usepackage{subcaption}			% Use pdf, png, jpg, or eps§ with pdflatex; use eps in DVI mode
+\usepackage{array}
+\usepackage{csvsimple}				% TeX will automatically convert eps --> pdf in pdflatex		
+\usepackage{amssymb}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[utf8]{inputenc}
+
+\usepackage{multirow}
+\usepackage{fancyvrb}
+%SetFonts
+
+%SetFonts
+
+
+\title{Analysis Of Housing Data}
+\author{Travis Barton, Eddie Gonzalez}
+\date{4/30/18}							% Activate to display a given date or no date
+
+\begin{document}
+\maketitle
+\section{Purpose}
+The purpose of this project is to explore the best model for explaining house sale prices in a kaggle data science competition. The dataset contains information on houses for sale in Ames, Iowa and has 79 variables. One of the variables was deemed too sparse for use, so after removing the predictor variable (Sales Price), we are left with 36 qualitative and 41 quantitative variables to work with. To perform our analysis we used the R packages: FactoMineR, Readr, PCAmixdata, and GGPlot2. 
+
+\section{Data}
+The 36 qualitative variables (tables on appendix) consist of a variety of factors describing the house's interior, exterior and surrounding neighborhood. Since there is a mixture of characters and numbers to describe the different factor levels, all qualitative variables were changed to letters/characters and all quantitative variables were changed to numbers/scales. An example of this lies in the variable MSSubClass (identifying the type of building involved in the sale), which was originally listed as a factor of numbers (20 = 1-Story 1946 style house or newer, 30 = 1-Story 1945 house or older, ...), and was changed to a list of letters instead with 20 = "A", 30 = "B", etc. This variable conversion became a problem because during our analysis we chose to perform Principal Component Analysis (PCA) on the quantitative variables, and Multiple Components Analysis (MCA) on the qualitative variables in order to reduce the number of predictors in our various models. During this endeavor, we used a function called "splitmix" from the package PCAmixdata that splits a data set into it's qualitative and quantitative variables. In its input, it required that qualitative variables only have characters and quantitative variables only have numbers. 
+
+The same problem of variable-data type conversion came up during our examination of the quantitative variables. When examining many of the ordinal variables like ExterQual (which evaluates the quality of the material on the outside of the house on a scale from excellent to poor represented by "Ex" and "Po") we noticed that, while they do have a ranking, they also are listed as character inputs. 
+
+\section{Component Analysis}
+
+Once the data was separated into its quantitative and qualitative components, we ran our PCA and MCA. PCA is a method of dimensionality reduction that takes advantage of the correlation between the given variables to create new variables that are linear combinations of the old ones. This has several perks, including the fact that the new variables are guaranteed to be linearly independent of each other and that, often, a fraction of the new variables can explain almost all of the variability in that data. MCA is the same general principle except for qualitative variables. 
+\begin{figure}[h]
+\centering
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.7\linewidth]{rplotfig1}
+  \caption{}
+  \label{fig:1}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.7\linewidth]{rplotfig2}
+  \caption{}
+  \label{fig:2}
+\end{subfigure}
+\caption{PCA vs MCA variance contributions}
+\label{}
+\end{figure}
+
+After performing MCA, we made the decision to cut off the number of new variables at three, as after three the amount of explained variability that we gained by adding another did not outweigh the cost of making our model less parsimonious. This decision can be seen as a sudden drop in the explained variability (Fig 1a). When it came to PCA, the number of variables that we should keep was not clear. The graph of added variability drops off in two places, once after the third variable, and again after the sixth (Fig 1b). What is more, there is a general rule of thumb for PCA that one should never keep a variable with an eigenvalue lower than 1 (as it is generally assumed that the original data could have explained as much or more variability than an eigan valued variable with value 1) and our eigenvalues have values above 1 as far down as the 13th variable. As a result, we performed many analysis with all three variants and compared their performances. 
+
+
+
+
+
+\section{Analysis}
+In order to establish optimal model adequacy, we tested our models on two goals. One where we attempted to predict the exact sale price of the home with linear regression techniques, and the other where we attempted to predict whether a home would sell above or below the average price of homes using logistic regression. During the analysis, we discovered that Sale Price did not follow a normal distribution. Since Sale Price does not follow a normal distribution, we modified Sale Price with a log transformation. After the transformation, the new Sale Price followed a normal distribution, and thus our assumptions for linear regression were met. The models, R squared/accuracy values, RMSE values and Ranks are tabled below. 
+
+
+\begin{center}
+\begin{tabular}{ |c|c|c|c| } 
+\hline
+Basic Linear Model & $R^2$ & RMSE & Rank\\
+ \hline \hline
+ \tiny
+ $Y = PCA_1 + PCA_2 + PCA_3 + MCA_1 +  MCA_3$ & .7903 & 36892.7 & 1\\ 
+ \tiny
+ $Y = PCA_1 + PCA_2 + PCA_3 + ... + PCA_6 + MCA_1 + MCA_2 + MCA_3$ & .802 & 36113.3 & 2\\ 
+ \tiny
+ $Y = PCA_1 + PCA_2 + ... + PCA_{13} + MCA_1 + MCA_2 + MCA_3$ & .8116 & 36154.7 & 3\\ 
+ \hline
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{ |c|c|c|c| } 
+ \hline
+ Log Transformed Model & $R^2$ & RMSE & Rank \\
+ \hline \hline
+ \tiny
+ $log(Y) = PCA_1 + PCA_2 + PCA_3 + MCA_1$ & .8339 & .1632 & 1 \\ 
+ \tiny
+ $log(Y) = PCA_1 + PCA_2 + PCA_3 + ... + PCA_6 + MCA_1 + MCA_2$ & .8473 & .1562 & 3 \\ 
+ \tiny
+ $log(Y) = PCA_1 + ... +PCA_6 + PCA_8 + ... +PCA_{10} + PCA_{12}+ PCA_{13} + MCA_1 + MCA_2$ & .8534 & .1521 & 2 \\ 
+ \hline
+\end{tabular}
+\end{center}
+
+
+\begin{center}
+\begin{tabular}{ |c|c|c|c| } 
+ \hline
+ Logistic Model & Accuracy  & AIC & Rank\\
+ \hline \hline
+ \tiny
+ $Y_{binary} = PCA_1 + MCA_1 + MCA_3$ & .9233 & 608  & 3\\ 
+ \tiny
+ $Y_{binary} = PCA_1 + PCA_3 + PCA_5 + MCA_3$ & .9322 & 578.37  & 2\\ 
+ \tiny
+ $Y_{binary} = PCA_1 + PCA_3 + PCA_4 + PCA_5 + PCA_8 + PCA_{13}$ & .9369 & 531.04  & 1\\ 
+ \hline
+\end{tabular}
+\end{center}
+
+
+\section{Conclusion}
+Based on the results of the Basic Linear Regression model, we chose the first model as the best model over the other three. The first model has far fewer variables than the other linear regression models and only has a slightly lower $R^2$ value. For the Log Transformed models, we again choose the simplest model because the amount of increase in $R^2$ that more variables provided did not out way the cost of adding complexity. Since Sale Price does not follow a normal distribution, using a basic linear regression model would not be the best choice to use for analyzing and predicting the housing prices of Ames, Iowa. The basic linear regression models also tend to overestimate the Sale Price of the houses as sale price increases. Our final choice of model for predicting housing prices was the simplet model of the log transformation options. For the Logistic Regression model, we chose the model number three because this model had the highest accuracy and the lowest AIC value. 
+\section{Appendix}
+
+
+
+% redefine \VerbatimInput
+\RecustomVerbatimCommand{\VerbatimInput}{VerbatimInput}%
+{fontsize=\tiny,
+ %
+ frame=lines,  % top and bottom rule only
+ framesep=2em, % separation between frame and text
+ rulecolor=\color{Gray},
+ %
+ label=\fbox{\color{Black}{data_description.txt},
+ labelposition=topline,
+ %
+ commandchars=\|\(\), % escape character and argument delimiters for
+                      % commands within the verbatim
+ commentchar=*        % comment character
+}
+
+\begin{document}
+
+\VerbatimInput{data_description.txt}
+
+\end{document}  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
