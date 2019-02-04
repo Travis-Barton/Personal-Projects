@@ -1,0 +1,7 @@
+*.pyc
+*.mp4
+*.h5
+png_folder
+png_blog
+.ipynb_checkpoints
+
