@@ -1,7 +1,13 @@
 ## embeddings loading
 
 library(readr)
-
+library(tidyr)
+library(e1071)
+library(LilRhino)
+library(forcats)
+library(textclean)
+library(tm)
+library(text2vec)
 load_glove_embeddings = function(path, d){
   #'/Users/travisbarton/Downloads/glove.6B/glove.6B.50d.txt'
   col_names <- c("term", paste("d", 1:d, sep = ""))
@@ -9,20 +15,33 @@ load_glove_embeddings = function(path, d){
                                   delim = " ",
                                   quote = "",
                                   col_names = col_names))
-  
   rownames(dat) = dat$term
   dat = dat[,-1]
-  
-  
+  return(dat)
 }
 ## 0) Pretreatment
 
-Pretreatment = function(title_vec){
+Pretreatment = function(title_vec, stem = TRUE, lower = TRUE){
+  Num_Al_sep = function(vec){
+    vec = unlist(strsplit(vec, "(?=[A-Za-z])(?<=[0-9])|(?=[0-9])(?<=[A-Za-z])", perl = TRUE))
+    vec = paste(vec, collapse = " ")
+    return(vec)
+  }
   titles = as.character(title_vec) %>%
     lapply(gsub, pattern = "[^[:alnum:][:space:]]",replacement = "") %>%
+    unlist() %>%
+    lapply(Num_Al_sep) %>%
+    unlist() %>%
     lapply(replace_number) %>%
-    lapply(stemDocument) %>%
-    lapply(tolower)
+    unlist()
+  if(stem == TRUE){
+    titles = titles %>%
+      lapply(stemDocument)
+  }
+  if(lower == TRUE){
+    titles = titles %>% 
+      lapply(tolower)
+  }
   return(titles)
 }
 
@@ -93,29 +112,30 @@ Sentence_Vector = function(sentence, emb_matrix, stopwords){
 
 
 # Testing
-library(e1071)
-library(LilRhino)
-library(forcats)
-subs = c("physics", "bio", "med", "geo", "chem", "astro", "eng")
-askscience_Data$tag = askscience_Data$tag %>%
-  fct_collapse("Other" = c(as.character(unique(askscience_Data$tag)[which(!(unique(askscience_Data$tag) %in% subs))])))
 
-askscience_Data$Title = unlist(Pretreatment(askscience_Data$Title))
-#These suck I need better data
-emb_mat = Embedding_Matrix(askscience_Data$Title, 5L, stopwords, 3L, 50, 100)
-
-dat = Cross_val_maker(askscience_Data, .2)
-test_vecs = dat$Test$Title %>%
-  lapply(., Sentence_Vector, t(emb_mat), stopwords) %>%
-  unlist %>%
-  matrix(ncol = 50, byrow=T) %>%
-  cbind(dat$Test$tag) %>%
-  data.frame()
-
-train_vecs = dat$Train$Title %>%
-  Pretreatment() %>%
-  unlist() %>%
-  lapply(., Sentence_Vector, t(emb_mat), stopwords) %>%
-  unlist() %>%
-  matrix(ncol = 50, byrow=T)
+# subs = c("physics", "bio", "med", "geo", "chem", "astro", "eng")
+# askscience_Data$tag = askscience_Data$tag %>%
+#   fct_collapse("Other" = c(as.character(unique(askscience_Data$tag)[which(!(unique(askscience_Data$tag) %in% subs))])))
+# askscience_Data$Title = as.character(askscience_Data$Title)
+# 
+# lapply(askscience_Data$Title, Pretreatment)
+# 
+# askscience_Data$Title = unlist(Pretreatment(askscience_Data$Title[1]))
+# #These suck I need better data
+# emb_mat = Embedding_Matrix(askscience_Data$Title, 5L, stopwords, 3L, 50, 100)
+# 
+# dat = Cross_val_maker(askscience_Data, .2)
+# test_vecs = dat$Test$Title %>%
+#   lapply(., Sentence_Vector, t(emb_mat), stopwords) %>%
+#   unlist %>%
+#   matrix(ncol = 50, byrow=T) %>%
+#   cbind(dat$Test$tag) %>%
+#   data.frame()
+# 
+# train_vecs = dat$Train$Title %>%
+#   Pretreatment() %>%
+#   unlist() %>%
+#   lapply(., Sentence_Vector, t(emb_mat), stopwords) %>%
+#   unlist() %>%
+#   matrix(ncol = 50, byrow=T)
 
