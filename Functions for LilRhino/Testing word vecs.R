@@ -8,6 +8,8 @@ library(forcats)
 library(textclean)
 library(tm)
 library(text2vec)
+
+## 0) glove embeddings loading
 load_glove_embeddings = function(path, d){
   #'/Users/travisbarton/Downloads/glove.6B/glove.6B.50d.txt'
   col_names <- c("term", paste("d", 1:d, sep = ""))
@@ -19,8 +21,9 @@ load_glove_embeddings = function(path, d){
   dat = dat[,-1]
   return(dat)
 }
-## 0) Pretreatment
 
+
+## 0) Pretreatment
 Pretreatment = function(title_vec, stem = TRUE, lower = TRUE){
   Num_Al_sep = function(vec){
     vec = unlist(strsplit(vec, "(?=[A-Za-z])(?<=[0-9])|(?=[0-9])(?<=[A-Za-z])", perl = TRUE))
@@ -45,9 +48,8 @@ Pretreatment = function(title_vec, stem = TRUE, lower = TRUE){
   return(titles)
 }
 
+
 ## 1) Stopword maker
-
-
 StopWordMaker = function(titles, cutoff = 20){
   test = unlist(lapply(as.vector(titles), strsplit, split = ' ', fixed = FALSE))
   stopwords = test %>%
@@ -60,8 +62,6 @@ StopWordMaker = function(titles, cutoff = 20){
 
 
 ## 2) Auto-creating word matrix
-
-
 Embedding_Matrix = function(sent, vocab_min, stopwords, skip_gram, vector_size, iterations = 20){
   it   = itoken(unlist(sent), tolower, word_tokenizer)
   vocab = create_vocabulary(it, stopwords = stopwords)
@@ -75,9 +75,9 @@ Embedding_Matrix = function(sent, vocab_min, stopwords, skip_gram, vector_size, 
   return(glove$components)
 }
 
-## 3) Sentence Converter
 
-###### 3a) word puller
+## 3) Sentence Converter
+###### 3a) Word Puller
 Vector_puller = function(word, emb_matrix){
   if(word %in% rownames(emb_matrix)){
     return(emb_matrix[word,])
@@ -86,7 +86,7 @@ Vector_puller = function(word, emb_matrix){
     return(rep(0, ncol(emb_matrix)))
   }
 }
-
+##### 3b) Sentence Vector
 Sentence_Vector = function(sentence, emb_matrix, stopwords){
   words = strsplit(sentence, " ", fixed = TRUE)[[1]]
   vec = lapply(words, Vector_puller, emb_matrix)
