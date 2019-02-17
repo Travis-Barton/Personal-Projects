@@ -8,6 +8,8 @@ library(forcats)
 library(textclean)
 library(tm)
 library(text2vec)
+library(fastmatch)
+library(data.table)
 
 ## 0) glove embeddings loading
 load_glove_embeddings = function(path, d){
@@ -75,67 +77,66 @@ Embedding_Matrix = function(sent, vocab_min, stopwords, skip_gram, vector_size, 
   return(glove$components)
 }
 
+##### New word converter
+Vector_puller2 = function(words, emb_matrix, dimension){
+  ret = colMeans(emb_matrix[words,])
+  if(all(is.na(ret)) == T){
+    return(rep(0, dimension))
+  }
+  return(ret)
+}
+#Make sure that the embeddings matrix is a data frame
+Sentence_Vector2 = function(Sentences, emb_matrix, stopwords, dimension){
+  words_list = stringi::stri_extract_all_words(Sentences)
+  vecs = lapply(words_list, Vector_puller2, emb_matrix, dimension)
+  return(vecs)
+}
+
+
+#### OUTDATED CODE
 
 ## 3) Sentence Converter
 ###### 3a) Word Puller
-Vector_puller = function(word, emb_matrix){
-  if(word %in% rownames(emb_matrix)){
-    return(emb_matrix[word,])
-  }
-  else{
-    return(rep(0, ncol(emb_matrix)))
-  }
-}
+# Vector_puller = function(word, emb_matrix){
+#   if(word %chin% rownames(emb_matrix)){
+#     return(emb_matrix[word,])
+#   }
+#   else{
+#     return(rep(0, ncol(emb_matrix)))
+#   }
+# }
 ##### 3b) Sentence Vector
-Sentence_Vector = function(sentence, emb_matrix, stopwords){
-  words = strsplit(sentence, " ", fixed = TRUE)[[1]]
-  vec = lapply(words, Vector_puller, emb_matrix)
-  df = matrix(unlist(vec), ncol = 50, byrow = T)
-  zeros = which(rowSums(df) == 0)
-  if(length(zeros) == 0)
-  {
-    df = apply(df, 2, mean)
-    return(df)
-  }
-  else if(length(zeros) == nrow(df)){
-    return(rep(0, 50))
-  }
-  else if(length(zeros) == nrow(df)-1){
-    return(df[-zeros,])
-  }
-  else{
-    df = apply(df[-zeros,], 2, mean)
-    return(df)
-  }
-}
-
-
-
-# Testing
-
-# subs = c("physics", "bio", "med", "geo", "chem", "astro", "eng")
-# askscience_Data$tag = askscience_Data$tag %>%
-#   fct_collapse("Other" = c(as.character(unique(askscience_Data$tag)[which(!(unique(askscience_Data$tag) %in% subs))])))
-# askscience_Data$Title = as.character(askscience_Data$Title)
-# 
-# lapply(askscience_Data$Title, Pretreatment)
-# 
-# askscience_Data$Title = unlist(Pretreatment(askscience_Data$Title[1]))
-# #These suck I need better data
-# emb_mat = Embedding_Matrix(askscience_Data$Title, 5L, stopwords, 3L, 50, 100)
-# 
-# dat = Cross_val_maker(askscience_Data, .2)
-# test_vecs = dat$Test$Title %>%
-#   lapply(., Sentence_Vector, t(emb_mat), stopwords) %>%
-#   unlist %>%
-#   matrix(ncol = 50, byrow=T) %>%
-#   cbind(dat$Test$tag) %>%
-#   data.frame()
-# 
-# train_vecs = dat$Train$Title %>%
-#   Pretreatment() %>%
-#   unlist() %>%
-#   lapply(., Sentence_Vector, t(emb_mat), stopwords) %>%
-#   unlist() %>%
-#   matrix(ncol = 50, byrow=T)
+# Sentence_Vector = function(sentence, emb_matrix, stopwords){
+#   if(sentence == ""){
+#     return(rep(0, 50))
+#   }
+#   words = strsplit(sentence, " ", fixed = TRUE)[[1]]
+#   words = words[-which(words %chin% stopwords)]
+#   if(length(words) == 0){
+#     return(rep(0, 50))
+#   }
+#   vec = lapply(words, Vector_puller, emb_matrix)
+#   if(is.null(vec) != T){
+#     df = matrix(unlist(vec), ncol = 50, byrow = T)
+#   }
+#   else{
+#     df = matrix(0, ncol = 50)
+#   }
+#   zeros = which(rowSums(df) == 0)
+#   if(length(zeros) == 0)
+#   {
+#     df = apply(df, 2, mean)
+#     return(df)
+#   }
+#   else if(length(zeros) == nrow(df)){
+#     return(rep(0, 50))
+#   }
+#   else if(length(zeros) == nrow(df)-1){
+#     return(df[-zeros,])
+#   }
+#   else{
+#     df = apply(df[-zeros,], 2, mean)
+#     return(df)
+#   }
+# }
 
