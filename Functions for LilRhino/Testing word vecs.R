@@ -1,11 +1,14 @@
 ## embeddings loading
 
 library(readr)
+library(parallel)
+library(textclean)
+
+
+
 library(tidyr)
-library(e1071)
 library(LilRhino)
 library(forcats)
-library(textclean)
 library(tm)
 library(text2vec)
 library(fastmatch)
@@ -26,28 +29,54 @@ load_glove_embeddings = function(path, d){
 
 
 ## 0) Pretreatment
-Pretreatment = function(title_vec, stem = TRUE, lower = TRUE){
+Num_Al_sep = function(vec){
+  vec = unlist(strsplit(vec, "(?=[A-Za-z])(?<=[0-9])|(?=[0-9])(?<=[A-Za-z])", perl = TRUE))
+  vec = paste(vec, collapse = " ")
+  return(vec)
+}
+Pretreatment = function(title_vec, stem = TRUE, lower = TRUE, parallel = F){
   Num_Al_sep = function(vec){
     vec = unlist(strsplit(vec, "(?=[A-Za-z])(?<=[0-9])|(?=[0-9])(?<=[A-Za-z])", perl = TRUE))
     vec = paste(vec, collapse = " ")
     return(vec)
   }
-  titles = as.character(title_vec) %>%
-    lapply(gsub, pattern = "[^[:alnum:][:space:]]",replacement = "") %>%
-    unlist() %>%
-    lapply(Num_Al_sep) %>%
-    unlist() %>%
-    lapply(replace_number) %>%
-    unlist()
-  if(stem == TRUE){
-    titles = titles %>%
-      lapply(stemDocument)
+  if(parallel == F){
+    titles = as.character(title_vec) %>%
+      lapply(gsub, pattern = "[^[:alnum:][:space:]]",replacement = "") %>%
+      unlist() %>%
+      lapply(Num_Al_sep) %>%
+      unlist() %>%
+      lapply(replace_number) %>%
+      unlist()
+    if(stem == TRUE){
+      titles = titles %>%
+        lapply(stemDocument)
+    }
+    if(lower == TRUE){
+      titles = titles %>% 
+        lapply(tolower)
+    }
+    return(titles)
   }
-  if(lower == TRUE){
-    titles = titles %>% 
-      lapply(tolower)
+  else{
+    numcore = detectCores()
+    titles = as.character(title_vec) %>%
+      mclapply(gsub, pattern = "[^[:alnum:][:space:]]",replacement = "", mc.cores = numcore) %>%
+      unlist() %>%
+      mclapply(Num_Al_sep, mc.cores = numcore) %>%
+      unlist() %>%
+      mclapply(replace_number, mc.cores = numcore) %>%
+      unlist()
+    if(stem == TRUE){
+      titles = titles %>%
+        mclapply(stemDocument, mc.cores = numcore)
+    }
+    if(lower == TRUE){
+      titles = titles %>% 
+        mclapply(tolower, mc.cores = numcore)
+    }
+    return(titles)
   }
-  return(titles)
 }
 
 
@@ -72,14 +101,18 @@ Embedding_Matrix = function(sent, vocab_min, stopwords, skip_gram, vector_size, 
   vectorizer <- vocab_vectorizer(vocab)
   # use window of 5 for context words
   tcm <- create_tcm(it, vectorizer, skip_grams_window = skip_gram)
-  glove = GlobalVectors$new(word_vectors_size = vector_size, vocabulary = vocab, x_max = 5)
-  glove$fit_transform(tcm, n_iter = iterations)
-  return(glove$components)
+  glove = GlobalVectors$new(word_vectors_size = vector_size, 
+                            vocabulary = vocab, 
+                            x_max = 5, shuffle = T,
+                            lambda = 1e-5)
+  temp1 = glove$fit_transform(tcm, n_iter = iterations)
+  return(as.data.frame(temp1 + t(glove$components)))
+  #return(as.data.frame(glove$components))
 }
 
 ##### New word converter
 Vector_puller2 = function(words, emb_matrix, dimension){
-  ret = colMeans(emb_matrix[words,])
+  ret = colMeans(emb_matrix[words,], na.rm = TRUE)
   if(all(is.na(ret)) == T){
     return(rep(0, dimension))
   }
@@ -87,9 +120,9 @@ Vector_puller2 = function(words, emb_matrix, dimension){
 }
 #Make sure that the embeddings matrix is a data frame
 Sentence_Vector2 = function(Sentences, emb_matrix, stopwords, dimension){
-  words_list = stringi::stri_extract_all_words(Sentences)
-  vecs = lapply(words_list, Vector_puller2, emb_matrix, dimension)
-  return(vecs)
+    words_list = stringi::stri_extract_all_words(Sentences, simplify = T)
+    vecs = Vector_puller2(words_list, emb_matrix, dimension)
+    return(t(vecs))
 }
 
 
