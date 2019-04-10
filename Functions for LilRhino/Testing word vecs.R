@@ -119,7 +119,7 @@ Vector_puller2 = function(words, emb_matrix, dimension){
   return(ret)
 }
 #Make sure that the embeddings matrix is a data frame
-Sentence_Vector2 = function(Sentences, emb_matrix, stopwords, dimension){
+Sentence_Vector2 = function(Sentences, emb_matrix, dimension){
     words_list = stringi::stri_extract_all_words(Sentences, simplify = T)
     vecs = Vector_puller2(words_list, emb_matrix, dimension)
     return(t(vecs))
