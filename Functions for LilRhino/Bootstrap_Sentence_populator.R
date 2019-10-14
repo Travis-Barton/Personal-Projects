@@ -1,46 +1,90 @@
-# Bootstrap sampling of individual words in each group of sentences seperated by class. 
-# This way we get more data for small sizes
+library(readr)
+library(magrittr)
+library(dplyr)
+library(LilRhino)
+library(parallel)
+testing_set = c(paste('this is test',  as.character(seq(1, 10, 1))))
 
-
-### 1) Turn posts into one hot encodings with data.
-Word_Samples = function(titles, tags, stopwords){
-  total_words = list()
-  total_lengths = list()
-  for(tag in unique(tags)){
-    index = which(tags == tag)
-    total_words[[tag]] = unlist(lapply(titles[index], strsplit, split = ' ', fixed = TRUE))
-    bad_words_index = which(total_words[[tag]] %in% stopwords)
-    total_words[[tag]] = total_words[[tag]][-bad_words_index]
-    total_lengths[[tag]] = lengths(unlist(lapply(titles[index], strsplit, split = ' ', fixed = TRUE), recursive = F))
+Bootstrap_Vocab = function(vocab, N, stopwds, min_length = 7, max_length = 15)
+{
+  res = {}
+  sent = ''
+  cutoff = sample(min_length:max_length, 1)
+  while(length(res) < N){
+            sent = paste(sent, vocab[sample(1:length(vocab), 1)] %>%
+              strsplit(' ') %>%
+              unlist() %>%
+              data.frame('words' = ., stringsAsFactors = F) %>%
+              filter(!(words %in% stopwds)) %>%
+              sample_n(1), ' ')
+            
+            len = strsplit(sent, ' ') %>%
+                unlist() %>%
+                as.data.frame() %>%
+                filter(. != '') %>%
+                nrow()
+              
+            
+            if(len > cutoff){
+              res = c(res, sent)
+              sent = ''
+              cutoff = sample(min_length:max_length, 1)
+            }
+      
   }
-  return(list(word_bank = total_words, length_bank = total_lengths))
-}
-### 2) Seperate them by class.
+  return(res)
+} # For one class
 
-### 3) Label each '1' in each vector with a vector and a placeholder.
-
-### 4) Make a vector of lengths of words.
-
-### 5) Sample each word randomly. The size of each word is also sampled from the 
-###    vector made in 4). 
-
-### 6) Profit! (jk but really then you have new data and can test)
-
-### 7) Functionalize it for package.
-
-
-########################## Sandbox Area ##########################
-# Lets get some test data going
-library(readr) # Reading in CSV
-library(dplyr) # For piping
-library(text2vec) # For Glove Model
-library(tm) # For stemming
-library(textclean) # For certain character removles 
-dat <- read.csv("~/Documents/GitHub/Redditbot/askscience_Data.csv")
-titles = as.character(dat$Title)
-titles = unlist(Pretreatment(titles))
-stopwords = StopWordMaker(titles, cutoff = 30)
-emb_mat = t(Embedding_Matrix(titles, 5L, stopwords, 10L, 50))
+Bootstrap_Data_Frame = function(text, tags, stopwords, min_length = 7, max_length = 15)
+{
+  max_tags =floor(1.1*max(table(tags)))
+  newdata = data.frame('text' = text, 'tags' = tags, stringsAsFactors = F)
+  for (tag in unique(tags)) {
+    tag_index = which(tags == tag)
+    num_to_boostrap = max_tags - length(tag_index)
+    new_sents = text[tag_index] %>%
+      Bootstrap_Vocab(num_to_boostrap, stopwords, min_length, max_length)
+    
+    new_row = cbind(new_sents, rep(tag, length(new_sents)))
+    new_row = data.frame('text' = new_row[,1], 'tags' = new_row[,2], stringsAsFactors = F)
+    newdata = rbind(newdata, new_row)
+  }
+  newdata$text = as.character(newdata$text)
+  return(newdata)
+} # For the whole database
 
 
 
+# from your testng, you've seen that it does well in enhancing
+# a binary decision. But it doesn't seem to do well with The whole
+# data set. This needs more investigation.
+
+# It appears no new information is being added. Perhaps the synonym 
+# idea should re-appear. 
+
+
+
+
+##################### Testint ######################
+
+Bootstrap_Vocab(testing_set, 3, c('is'))
+
+
+data = read_csv('Askscience_Data_body.csv')[,-1]
+
+stops = Pretreatment(data$Title, F, T, T) %>%
+  unlist() %>%
+  Stopword_Maker(100)
+
+blah = filter(data, tag == 'maths') %>%
+  extract(,2) %>%
+  as.matrix() %>%
+  Pretreatment(F, T) %>%
+  unlist() %>%
+  Bootstrap_Vocab(3, stopwds = stops)
+blah2 = data %>% extract(,2) %>%
+  as.matrix() %>%
+  Pretreatment(F, T) %>%
+  unlist()
+
+blah2 = Bootstrap_Data_Frame(blah2, data$tag, stops)

@@ -15,8 +15,7 @@ library(fastmatch)
 library(data.table)
 
 ## 0) glove embeddings loading
-load_glove_embeddings = function(path, d){
-  #'/Users/travisbarton/Downloads/glove.6B/glove.6B.50d.txt'
+load_glove_embeddings = function(path = 'glove.42B.300d.txt', d = 50){
   col_names <- c("term", paste("d", 1:d, sep = ""))
   dat <- as.data.frame(read_delim(file = path,
                                   delim = " ",
@@ -53,7 +52,7 @@ Pretreatment = function(title_vec, stem = TRUE, lower = TRUE, parallel = F){
         lapply(stemDocument)
     }
     if(lower == TRUE){
-      titles = titles %>% 
+      titles = titles %>%
         lapply(tolower)
     }
     return(titles)
@@ -72,7 +71,7 @@ Pretreatment = function(title_vec, stem = TRUE, lower = TRUE, parallel = F){
         mclapply(stemDocument, mc.cores = numcore)
     }
     if(lower == TRUE){
-      titles = titles %>% 
+      titles = titles %>%
         mclapply(tolower, mc.cores = numcore)
     }
     return(titles)
@@ -101,8 +100,8 @@ Embedding_Matrix = function(sent, vocab_min, stopwords, skip_gram, vector_size, 
   vectorizer <- vocab_vectorizer(vocab)
   # use window of 5 for context words
   tcm <- create_tcm(it, vectorizer, skip_grams_window = skip_gram)
-  glove = GlobalVectors$new(word_vectors_size = vector_size, 
-                            vocabulary = vocab, 
+  glove = GlobalVectors$new(word_vectors_size = vector_size,
+                            vocabulary = vocab,
                             x_max = 5, shuffle = T,
                             lambda = 1e-5)
   temp1 = glove$fit_transform(tcm, n_iter = iterations)
@@ -111,17 +110,18 @@ Embedding_Matrix = function(sent, vocab_min, stopwords, skip_gram, vector_size, 
 }
 
 ##### New word converter
-Vector_puller2 = function(words, emb_matrix, dimension){
-  ret = colMeans(emb_matrix[words,], na.rm = TRUE)
+Vector_puller = function(words, emb_matrix, dimension){
+  ret = colMeans(emb_matrix[words,], na.rm = TRUE)[1:dimension]
   if(all(is.na(ret)) == T){
     return(rep(0, dimension))
   }
   return(ret)
 }
 #Make sure that the embeddings matrix is a data frame
-Sentence_Vector2 = function(Sentences, emb_matrix, dimension){
+Sentence_Vector = function(Sentences, emb_matrix, dimension, stopwords){
     words_list = stringi::stri_extract_all_words(Sentences, simplify = T)
-    vecs = Vector_puller2(words_list, emb_matrix, dimension)
+    words_list = words_list[-(words_list %in% stopwords)]
+    vecs = Vector_puller(words_list, emb_matrix, dimension)
     return(t(vecs))
 }
 
