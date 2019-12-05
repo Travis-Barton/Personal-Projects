@@ -1,0 +1,302 @@
+---
+title: "Keras experiment"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(LilRhino)
+library(keras)
+library(dplyr)
+library(reticulate)
+library(tensorflow)
+use_python('/anaconda3/bin/python', required = T)
+```
+
+```{r Net1}
+net1 = keras_model_sequential()
+
+net1 %>%
+  layer_dense(9660, input_shape = 9660, activation = 'relu') %>%
+  layer_dense(9660, 'relu') %>%
+  layer_dense(5000, 'relu') %>%
+  layer_dense(5000, 'relu') %>%
+  layer_gaussian_dropout(.5) %>%
+  layer_gaussian_noise(.01) %>%
+  layer_dense(1000) %>%
+  layer_activation_parametric_relu() %>%
+  layer_dense(500, 'relu') %>%
+  layer_dense(2, activation = 'softmax')
+
+
+net1 %>% compile(
+  optimizer = 'Adam',
+  metrics = c('acc'),
+  loss = 'binary_crossentropy'
+)
+```
+
+```{r Net2}
+net2 = keras_model_sequential()
+
+net2 %>%
+  layer_dense(261, input_shape = 261, activation = 'relu') %>%
+  layer_dense(724, 'relu') %>%
+  layer_dense(362, 'relu') %>%
+  layer_dense(181, 'relu') %>%
+  layer_gaussian_dropout(.5) %>%
+  layer_gaussian_noise(.01) %>%
+  layer_dense(100) %>%
+  layer_activation_parametric_relu() %>%
+  layer_dense(100, 'relu') %>%
+  layer_dense(10, activation = 'softmax')
+
+
+net2 %>% compile(
+  optimizer = 'Adam',
+  metrics = c('acc'),
+  loss = 'categorical_crossentropy'
+)
+```
+
+```{r Net3}
+net3 = keras_model_sequential()
+
+net3 %>%
+  layer_dense(261, input_shape = 261, activation = 'relu') %>%
+  layer_dense(724, 'relu') %>%
+  layer_dense(362, 'relu') %>%
+  layer_dense(181, 'relu') %>%
+  layer_gaussian_dropout(.5) %>%
+  layer_gaussian_noise(.01) %>%
+  layer_dense(100) %>%
+  layer_activation_parametric_relu() %>%
+  layer_dense(100, 'relu') %>%
+  layer_dense(10, activation = 'softmax')
+
+
+net3 %>% compile(
+  optimizer = 'Adam',
+  metrics = c('acc'),
+  loss = 'categorical_crossentropy'
+)
+```
+
+```{r Net4}
+
+net4 = keras_model_sequential()
+
+net4 %>%
+  layer_dense(300, input_shape = 300, activation = 'relu') %>%
+  layer_dense(300, 'relu') %>%
+  layer_dense(128, 'relu') %>%
+  layer_dense(128, 'relu') %>%
+  layer_gaussian_dropout(.5) %>%
+  layer_gaussian_noise(.01) %>%
+  layer_dense(64) %>%
+  layer_activation_parametric_relu() %>%
+  layer_dense(32, 'relu') %>%
+  layer_dense(2, activation = 'softmax')
+
+
+net4 %>% compile(
+  optimizer = 'Adam',
+  metrics = c('acc', 'loss'),
+  loss = 'binary_crossentropy'
+)
+```
+
+```{r Net5}
+
+net5 = keras_model_sequential()
+
+net5 %>%
+  layer_dense(300, input_shape = 300, activation = 'relu') %>%
+  layer_dense(300, 'relu') %>%
+  layer_dense(128, 'relu') %>%
+  layer_dense(128, 'relu') %>%
+  layer_gaussian_dropout(.5) %>%
+  layer_gaussian_noise(.01) %>%
+  layer_dense(64) %>%
+  layer_activation_parametric_relu() %>%
+  layer_dense(32, 'relu') %>%
+  layer_dense(2, activation = 'softmax')
+
+
+net5 %>% compile(
+  optimizer = 'Adam',
+  metrics = c('acc', 'loss'),
+  loss = 'binary_crossentropy'
+)
+```
+
+```{r Net6}
+
+net6 = keras_model_sequential()
+
+net6 %>%
+  layer_dense(300, input_shape = 300, activation = 'relu') %>%
+  layer_dense(300, 'relu') %>%
+  layer_dense(128, 'relu') %>%
+  layer_dense(128, 'relu') %>%
+  layer_gaussian_dropout(.5) %>%
+  layer_gaussian_noise(.01) %>%
+  layer_dense(64) %>%
+  layer_activation_parametric_relu() %>%
+  layer_dense(32, 'relu') %>%
+  layer_dense(2, activation = 'softmax')
+
+
+net6 %>% compile(
+  optimizer = 'Adam',
+  metrics = c('acc', 'loss'),
+  loss = 'binary_crossentropy'
+)
+```
+
+```{r Net7}
+net7 = keras_model_sequential()
+
+net7 %>%
+  layer_dense(96, input_shape = 96, activation = 'relu') %>%
+  layer_dense(96, 'relu') %>%
+  layer_dense(32, 'relu') %>%
+  layer_dense(32, 'relu') %>%
+  layer_gaussian_dropout(.5) %>%
+  layer_gaussian_noise(.01) %>%
+  layer_dense(8) %>%
+  layer_activation_parametric_relu() %>%
+  layer_dense(8, 'relu') %>%
+  layer_dense(2, activation = 'softmax')
+
+
+net7 %>% compile(
+  optimizer = 'Adam',
+  metrics = c('acc', 'loss'),
+  loss = 'binary_crossentropy'
+)
+```
+
+```{r Data Prep MNIST}
+dat = dataset_mnist()
+temp = matrix(dat$train$x, ncol = 28*28, nrow = 60000, byrow = F)
+datt = Cross_val_maker(cbind(temp, dat$train$y), .2)
+Y = datt$Train$V785 %>%
+  to_categorical()
+Y_test = datt$Test$V785 %>%
+  to_categorical()
+train = datt$Train[,-785]/256
+test  = datt$Test[,-785]/256
+
+```
+
+```{r Data Prep waves}
+good = read_csv('~/good.csv', col_types = cols(.default = 'd'))[,-1] %>%
+  scale() %>%
+  cbind(., 1)
+bad = read_csv('~/bad.csv', col_types = cols(.default = 'd'))[,-1] %>%
+  scale() %>%
+  cbind(., 0)
+
+total = rbind(good, bad)
+
+dat = Cross_val_maker(total, .3)
+train = dat$Train[,-28983]
+test = dat$Test[,-28983]
+y_train = to_categorical(dat$Train[,28983])
+y_test = to_categorical(dat$Test[,28983])
+```
+
+```{r First attempt}
+set.seed(42)
+temp = sample(1:ncol(bad)-1, ncol(bad)-1)
+f1_index = temp[1:9660]
+f2_index = temp[9661:(9660*2)]
+f3_index = temp[(9660*2+2):(ncol(bad)-2)]
+
+
+# Lets fit'm 
+
+net1 %>% fit(
+  x = as.matrix(train[,f1_index]), y = y_train, epochs = 10, batch_size = 100,
+  validation_data = list(as.matrix(test[,f1_index]), y_test)
+)
+
+net2 %>% fit(
+  x = as.matrix(train[,f2_index]), y = Y, epochs = 10, batch_size = 100,
+  validation_data = list(as.matrix(test[,f2_index]), Y_test)
+)
+
+net3 %>% fit(
+  x = as.matrix(train[,f3_index]), y = Y, epochs = 10, batch_size = 100,
+  validation_data = list(as.matrix(test[,f3_index]), Y_test)
+)
+
+
+
+```
+
+
+```{r baseline network}
+base_net = keras_model_sequential()
+
+base_net %>%
+  layer_dense(28982, input_shape = 28982, activation = 'relu') %>%
+  layer_dense(28982, 'relu') %>%
+  layer_gaussian_dropout(.2) %>%
+  layer_gaussian_noise(.05) %>%
+  layer_dense(10000) %>%
+  layer_activation_parametric_relu() %>%
+  layer_dense(5000, 'relu') %>%
+  layer_dense(100, 'relu') %>%
+  layer_dense(2, 'softmax')
+
+base_net %>% compile(
+  loss= 'binary_crossentropy',
+  metrics = 'acc',
+  optimizer = 'Adam'
+)
+
+history = base_net %>% fit(
+  as.matrix(dat$Train[,-28983]), y_train, epochs = 10, batch_size = 1000,
+  validation_data = list(as.matrix(dat$Test[,-28983]), y_test)
+)
+
+```
+
+```{R RANDOM BRAINS}
+
+
+good = read_csv('~/good.csv', col_types = cols(.default = 'd'))[,-1] %>%
+  scale() %>%
+  cbind(., 1)
+bad = read_csv('~/bad.csv', col_types = cols(.default = 'd'))[,-1] %>%
+  scale() %>%
+  cbind(., 0)
+
+total = rbind(good, bad)
+
+dat = Cross_val_maker(total, .3)
+train = dat$Train[,-28983]
+test = dat$Test[,-28983]
+y_train = dat$Train[,28983]
+y_test = dat$Test[,28983]
+
+
+finals = RN(train, y_train, test, y_test, 100, 1000, c(1000, 1000, 100))
+```
+
+
+
+
+
+
+
+
+
+
+
+
