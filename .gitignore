@@ -4,3 +4,11 @@ glove.6B/glove.6B.200d.txt
 glove.6B/glove.6B.300d.txt
 glove.6B/glove.6B.50d.txt
 .DS_Store
+*.txt
+*.json
+*.bpe
+speed_test/speed_test/checkpoint/new_run_large/checkpoint
+*.index
+*.meta
+*.analytics1
+*.data-00000-of-00001
