@@ -12,3 +12,4 @@ speed_test/speed_test/checkpoint/new_run_large/checkpoint
 *.meta
 *.analytics1
 *.data-00000-of-00001
+speed_test/samples/second_run/samples-4101
