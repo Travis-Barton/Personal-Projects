@@ -97,6 +97,9 @@ def lets_play_chess(player_color='white', previous_moves=None, fancy_display=Fal
             # else:
 
         print(game_so_far)
+        if board.fullmove_number > 40:
+            lets_play_chess(None)
+            break
         if fancy_display:
             display.checkForQuit()
     print(f'the game is over! congrats to {"white" if board.result() == "1-0" else "black" if board.result() == "0-1" else "both on the tie"}')
